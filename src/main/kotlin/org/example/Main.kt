@@ -48,6 +48,12 @@ fun main(args: Array<String>) {
                 }
             }
 
+            println("\n--- Этап 5: Генерация PlantUML ---")
+            val pumlText = generatePlantUml(graph)
+            println(pumlText)
+
+            saveAndRenderGraph(pumlText, config.outputFileName)
+
         } else if (config.repositoryMode == "remote") {
             println("\n--- Этап 2: Поиск прямых зависимостей (remote) ---")
 
@@ -301,4 +307,54 @@ fun findReverseDependencies(
     reverseResult.remove(targetPackage)
 
     return reverseResult
+}
+
+
+/**
+ * Генерирует текстовое представление графа на языке PlantUML.
+ */
+fun generatePlantUml(graph: Map<String, List<String>>): String {
+    val sb = StringBuilder()
+    sb.appendLine("@startuml")
+    sb.appendLine("skinparam linetype ortho")
+
+    for ((pkg, deps) in graph) {
+        if (deps.isEmpty()) {
+            sb.appendLine("class $pkg")
+        } else {
+            for (dep in deps) {
+                sb.appendLine("$pkg --> $dep")
+            }
+        }
+    }
+    sb.appendLine("@enduml")
+    return sb.toString()
+}
+
+
+/**
+ * Сохраняет PlantUML в файл и пытается сгенерировать SVG с помощью plantuml.jar.
+ */
+fun saveAndRenderGraph(plantUmlText: String, outputFileName: String) {
+    val baseName = outputFileName.substringBeforeLast(".")
+    val pumlFile = File("$baseName.puml")
+    pumlFile.writeText(plantUmlText)
+    println("Текстовое представление сохранено в: ${pumlFile.absolutePath}")
+
+    val plantUmlJar = File("plantuml.jar")
+    if (plantUmlJar.exists()) {
+        println("Генерация SVG...")
+        try {
+            val process = ProcessBuilder(
+                "java", "-jar", plantUmlJar.absolutePath, "-tsvg", pumlFile.absolutePath
+            ).start()
+            process.waitFor()
+            println("SVG сохранен в: ${File("$baseName.svg").absolutePath}")
+        } catch (e: Exception) {
+            println("Ошибка при вызове plantuml.jar: ${e.message}")
+        }
+    } else {
+        println("Внимание: plantuml.jar не найден в корне проекта. Пропускаем генерацию SVG.")
+        println("Вы можете сгенерировать картинку вручную на сайте plantuml.com, вставив туда текст из ${pumlFile.name}")
+    }
 }
