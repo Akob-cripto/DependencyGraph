@@ -34,6 +34,20 @@ fun main(args: Array<String>) {
             for ((pkg, deps) in graph) {
                 println("$pkg -> ${if (deps.isEmpty()) "[нет зависимостей]" else deps.joinToString(", ")}")
             }
+
+            println("\n--- Этап 4: Обратные зависимости ---")
+
+            val testPackages = listOf("D", "G", "A")
+
+            for (target in testPackages) {
+                val reverseDeps = findReverseDependencies(graph, target, depth)
+                if (reverseDeps.isEmpty()) {
+                    println("От '$target' никто не зависит.")
+                } else {
+                    println("От '$target' зависят: ${reverseDeps.joinToString(", ")}")
+                }
+            }
+
         } else if (config.repositoryMode == "remote") {
             println("\n--- Этап 2: Поиск прямых зависимостей (remote) ---")
 
@@ -247,4 +261,44 @@ fun getLocalDependencies(filePath: String, targetPackage: String): List<String> 
         }
     }
     return emptyList()
+}
+
+
+/**
+ * Находит обратные зависимости для заданного пакета.
+ * Использует BFS с рекурсией для поиска всех пакетов, которые (прямо или косвенно)
+ * зависят от targetPackage.
+ *
+ * @param graph Уже построенный граф зависимостей.
+ * @param targetPackage Пакет, для которого ищем обратные зависимости.
+ * @param maxDepth Максимальная глубина поиска.
+ * @return Множество имен пакетов, которые зависят от targetPackage.
+ */
+fun findReverseDependencies(
+    graph: Map<String, List<String>>,
+    targetPackage: String,
+    maxDepth: Int
+): Set<String> {
+    val reverseResult = mutableSetOf<String>()
+    val visited = mutableSetOf<String>()
+
+    fun bfsReverse(currentPackage: String, currentDepth: Int) {
+        if (currentDepth > maxDepth) return
+        if (visited.contains(currentPackage)) return
+
+        visited.add(currentPackage)
+
+        for ((pkg, deps) in graph) {
+            if (deps.contains(currentPackage)) {
+                reverseResult.add(pkg)
+                bfsReverse(pkg, currentDepth + 1)
+            }
+        }
+    }
+
+    bfsReverse(targetPackage, 0)
+
+    reverseResult.remove(targetPackage)
+
+    return reverseResult
 }
