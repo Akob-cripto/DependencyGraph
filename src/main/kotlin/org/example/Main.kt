@@ -1,4 +1,4 @@
-package org.example.org.example
+package org.example
 
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
@@ -21,6 +21,9 @@ fun main(args: Array<String>) {
         println(e.message)
         exitProcess(1)
     }
+    val response = findDependencies(configPath + "/APKINDEX", config.packageName, config.packageVersion)
+    println()
+    response.forEach {println(it)}
 }
 
 /**
@@ -88,4 +91,65 @@ fun loadConfig(filePath: String): Config {
         outputFileName = getTagValue("outputFileName"),
         maxDepth = getTagValue("maxDepth")
     )
+}
+
+/** Открывает  файл APKINDEX и извлекает прямые зависимости
+ * для заданного пакета и версии.
+ *
+ * @param filePath Путь к текстовому файлу APKINDEX.
+ * @param targetPackage Имя искомого пакета (например, "curl").
+ * @param targetVersion Искомая версия (например, "8.5.0-r0").
+ * @return Список строк с зависимостями. Если зависимостей нет, возвращает пустой список.
+ * @throws IllegalArgumentException Если пакет или версия не найдены в файле.
+ */
+fun findDependencies(filePath: String, targetPackage: String, targetVersion: String): List<String> {
+    val file = File(filePath)
+    if (!file.exists()) {
+        throw IllegalArgumentException("Файл индекса не найден: $filePath")
+    }
+
+    val lines = file.readLines()
+
+    var currentPackage = ""
+    var currentVersion = ""
+    var inTargetBlock = false
+
+    for (line in lines) {
+        if (line.isBlank()) {
+            inTargetBlock = false
+            continue
+        }
+
+        when {
+            line.startsWith("P:") -> {
+                currentPackage = line.substring(2).trim()
+                // Если имя совпало, начинаем отслеживать блок
+                inTargetBlock = (currentPackage == targetPackage)
+            }
+
+            line.startsWith("V:") -> {
+                currentVersion = line.substring(2).trim()
+                if (inTargetBlock && currentVersion != targetVersion) {
+                    inTargetBlock = false
+                }
+            }
+
+            line.startsWith("D:") -> {
+                if (inTargetBlock) {
+                    val depsString = line.substring(2).trim()
+                    return if (depsString.isEmpty()) {
+                        emptyList() // Пакет есть, но зависимостей нет
+                    } else {
+                        depsString.split(" ").filter { it.isNotBlank() }
+                    }
+                }
+            }
+        }
+    }
+
+    if (inTargetBlock) {
+        return emptyList()
+    }
+
+    throw IllegalArgumentException("Пакет '$targetPackage' версии '$targetVersion' не найден в индексе.")
 }
