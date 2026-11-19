@@ -13,17 +13,49 @@ fun main(args: Array<String>) {
     if(configPath.isNullOrBlank()) {
         throw IllegalArgumentException("Please provide a config file path")
     }
-    var config: Config? = null
+
     try{
-        config = loadConfig(configPath + "/config.xml")
+        val config = loadConfig("$configPath/config.xml")
         println(config)
+
+        if (config.repositoryMode == "local") {
+            println("\n--- Режим тестирования: Построение графа ---")
+
+            val testRepoPath = "$configPath/test-repo.txt"
+            val depth = config.maxDepth.toIntOrNull() ?: 5
+
+            val graph = buildDependencyGraph(
+                rootPackage = config.packageName, // Например "A"
+                maxDepth = depth,
+                repositoryMode = config.repositoryMode,
+                indexFilePath = testRepoPath
+            )
+
+            for ((pkg, deps) in graph) {
+                println("$pkg -> ${if (deps.isEmpty()) "[нет зависимостей]" else deps.joinToString(", ")}")
+            }
+        } else if (config.repositoryMode == "remote") {
+            println("\n--- Этап 2: Поиск прямых зависимостей (remote) ---")
+
+            val indexPath = "$configPath/APKINDEX"
+
+            val dependencies = findDependencies(
+                filePath = indexPath,
+                targetPackage = config.packageName,
+                targetVersion = config.packageVersion
+            )
+
+            if (dependencies.isEmpty()) {
+                println("Зависимостей нет.")
+            } else {
+                println("Прямые зависимости для '${config.packageName}':")
+                dependencies.forEach { println(" - $it") }
+            }
+        }
     } catch(e: Exception) {
         println(e.message)
         exitProcess(1)
     }
-    val response = findDependencies(configPath + "/APKINDEX", config.packageName, config.packageVersion)
-    println()
-    response.forEach {println(it)}
 }
 
 /**
@@ -152,4 +184,67 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
     }
 
     throw IllegalArgumentException("Пакет '$targetPackage' версии '$targetVersion' не найден в индексе.")
+}
+
+/**
+ * Строит граф зависимостей с помощью BFS (обход в ширину) с рекурсией.
+ *
+ * @param rootPackage Начальный пакет.
+ * @param maxDepth Максимальная глубина анализа.
+ * @param repositoryMode Режим работы ("local" или "remote").
+ * @param indexFilePath Путь к файлу тестового репозитория (для local режима).
+ * @return Map, где ключ - имя пакета, значение - список его прямых зависимостей.
+ */
+fun buildDependencyGraph(
+    rootPackage: String,
+    maxDepth: Int,
+    repositoryMode: String,
+    indexFilePath: String
+): Map<String, List<String>> {
+
+    val graph = mutableMapOf<String, List<String>>()
+
+    val visited = mutableSetOf<String>()
+
+    fun bfsRecursive(currentPackage: String, currentDepth: Int) {
+        if (currentDepth > maxDepth) return // Достигли максимальной глубины
+        if (visited.contains(currentPackage)) return // Пакет уже посещали (цикл)
+
+        visited.add(currentPackage)
+
+        val dependencies = if (repositoryMode == "local") {
+            getLocalDependencies(indexFilePath, currentPackage)
+        } else {
+            emptyList()
+        }
+
+        graph[currentPackage] = dependencies
+
+        for (dep in dependencies) {
+            bfsRecursive(dep, currentDepth + 1)
+        }
+    }
+
+    bfsRecursive(rootPackage, 0)
+
+    return graph
+}
+
+/**
+ * Читает локальный файл тестового репозитория и возвращает зависимости пакета.
+ * Формат строки: "A: B, C"
+ */
+fun getLocalDependencies(filePath: String, targetPackage: String): List<String> {
+    val file = File(filePath)
+    if (!file.exists()) throw IllegalArgumentException("Файл тестового репозитория не найден: $filePath")
+
+    val lines = file.readLines()
+    for (line in lines) {
+        val parts = line.split(":")
+        if (parts.size >= 2 && parts[0].trim() == targetPackage) {
+            val depsString = parts[1].trim()
+            return if (depsString.isEmpty()) emptyList() else depsString.split(",").map { it.trim() }
+        }
+    }
+    return emptyList()
 }
