@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <packageName>curl</packageName>
+    <repositoryUrl>https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64</repositoryUrl>
+    <repositoryMode>remote</repositoryMode>
+    <packageVersion>8.14.1-r2</packageVersion>
+    <outputFileName>graph.png</outputFileName>
+    <maxDepth>5</maxDepth>
+</config>
