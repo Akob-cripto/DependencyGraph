@@ -1,6 +1,5 @@
 package org.example
 
-import org.example.org.example.loadConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
