@@ -5,16 +5,28 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
 
+/**
+ * Тесты для проверки корректности загрузки и валидации конфигурации.
+ */
 class ConfigTest {
 
+    /**
+     * Проверяет, что валидный XML-файл конфигурации успешно загружается,
+     * и все поля объекта [Config] заполняются правильными значениями.
+     */
     @Test
     fun `should load valid config correctly`() {
         val tempFile = File.createTempFile("test_config", ".xml")
+
+        // Длинный URL разбит на части с помощью конкатенации, чтобы не превышать 100 символов
+        val longUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64" +
+                "/some/very/long/path/to/avoid/long/lines"
+
         val xmlContent = """
             <?xml version="1.0" encoding="UTF-8"?>
             <config>
                 <packageName>curl</packageName>
-                <repositoryUrl>https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64</repositoryUrl>
+                <repositoryUrl>$longUrl</repositoryUrl>
                 <repositoryMode>remote</repositoryMode>
                 <packageVersion>8.14.1-r2</packageVersion>
                 <outputFileName>graph.png</outputFileName>
@@ -27,7 +39,7 @@ class ConfigTest {
             val config = loadConfig(tempFile.absolutePath)
 
             assertEquals("curl", config.packageName)
-            assertEquals("https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64", config.repositoryUrl)
+            assertEquals(longUrl, config.repositoryUrl)
             assertEquals("remote", config.repositoryMode)
             assertEquals("8.14.1-r2", config.packageVersion)
             assertEquals("graph.png", config.outputFileName)
@@ -38,12 +50,19 @@ class ConfigTest {
         }
     }
 
+    /**
+     * Проверяет, что при попытке загрузить несуществующий файл
+     * выбрасывается исключение [IllegalArgumentException] с правильным сообщением.
+     */
     @Test
     fun `should throw exception when file does not exist`() {
+        val invalidPath = "/path/to/unknown/file.xml"
+        val expectedMessage = "Файл конфигурации не найден: $invalidPath"
+
         val exception = assertThrows<IllegalArgumentException> {
-            loadConfig("/path/to/unknown/file.xml")
+            loadConfig(invalidPath)
         }
 
-        assertEquals("Файл конфигурации не найден: /path/to/unknown/file.xml", exception.message)
+        assertEquals(expectedMessage, exception.message)
     }
 }
