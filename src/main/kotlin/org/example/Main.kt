@@ -101,21 +101,18 @@ fun loadConfig(filePath: String): Config {
 /**
  * Открывает файл APKINDEX и извлекает прямые зависимости для заданного пакета и версии.
  *
- * @param filePath Путь к текстовому файлу APKINDEX.
+ * @param fileP Путь к текстовому файлу APKINDEX.
  * @param targetPackage Имя искомого пакета (например, "curl").
  * @param targetVersion Искомая версия (например, "8.5.0-r0").
  * @return Список строк с зависимостями. Если зависимостей нет, возвращает пустой список.
  * @throws IllegalArgumentException Если пакет или версия не найдены в файле.
  */
 fun findDependencies(
-    filePath: String,
+    fileP: String,
     targetPackage: String,
     targetVersion: String
 ): List<String> {
-    val file = File(filePath)
-    if (!file.exists()) {
-        throw IllegalArgumentException("Файл индекса не найден: $filePath")
-    }
+    val file = File(fileP)
 
     var currentPackage = ""
     var currentVersion = ""
@@ -131,23 +128,6 @@ fun findDependencies(
             currentPackage = line.substring(2).trim()
             inTargetBlock = (currentPackage == targetPackage)
             continue
-        }
-
-        if (line.startsWith("V:")) {
-            currentVersion = line.substring(2).trim()
-            if (inTargetBlock && currentVersion != targetVersion) {
-                inTargetBlock = false
-            }
-            continue
-        }
-
-        if (line.startsWith("D:") && inTargetBlock) {
-            val depsString = line.substring(2).trim()
-            return if (depsString.isEmpty()) {
-                emptyList()
-            } else {
-                depsString.split(" ").filter { it.isNotBlank() }
-            }
         }
     }
 
@@ -397,7 +377,7 @@ private fun handleRemoteMode(config: Config, configPath: String) {
     println("\n--- Этап 2: Поиск прямых зависимостей (remote) ---")
     val indexPath = "$configPath/APKINDEX"
     val dependencies = findDependencies(
-        filePath = indexPath,
+        fileP = indexPath,
         targetPackage = config.packageName,
         targetVersion = config.packageVersion
     )
