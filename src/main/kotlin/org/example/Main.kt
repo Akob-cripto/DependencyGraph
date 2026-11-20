@@ -4,6 +4,8 @@ import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.system.exitProcess
 
+const val MIN_PARTS_FOR_PACKAGE = 2
+const val PACKAGE_INDEX = 0
 /**
  * Точка входа в приложение.
  * Парсит аргументы командной строки и загружает конфигурацию.
@@ -261,7 +263,9 @@ fun getLocalDependencies(filePath: String, targetPackage: String): List<String> 
     val lines = file.readLines()
     for (line in lines) {
         val parts = line.split(":")
-        if (parts.size >= 2 && parts[0].trim() == targetPackage) {
+        if (parts.size >= MIN_PARTS_FOR_PACKAGE
+            && parts[PACKAGE_INDEX].trim() == targetPackage
+        ) {
             val depsString = parts[1].trim()
             return if (depsString.isEmpty()) emptyList() else depsString.split(",").map { it.trim() }
         }
