@@ -98,8 +98,8 @@ fun loadConfig(filePath: String): Config {
     )
 }
 
-/** Открывает  файл APKINDEX и извлекает прямые зависимости
- * для заданного пакета и версии.
+/**
+ * Открывает файл APKINDEX и извлекает прямые зависимости для заданного пакета и версии.
  *
  * @param filePath Путь к текстовому файлу APKINDEX.
  * @param targetPackage Имя искомого пакета (например, "curl").
@@ -107,8 +107,11 @@ fun loadConfig(filePath: String): Config {
  * @return Список строк с зависимостями. Если зависимостей нет, возвращает пустой список.
  * @throws IllegalArgumentException Если пакет или версия не найдены в файле.
  */
-fun findDependencies(filePath: String, targetPackage: String, targetVersion: String):
-        List<String> {
+fun findDependencies(
+    filePath: String,
+    targetPackage: String,
+    targetVersion: String
+): List<String> {
     val file = File(filePath)
     if (!file.exists()) {
         throw IllegalArgumentException("Файл индекса не найден: $filePath")
@@ -127,7 +130,7 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
         if (line.startsWith("P:")) {
             currentPackage = line.substring(2).trim()
             inTargetBlock = (currentPackage == targetPackage)
-            continue // Ранний переход на следующую итерацию
+            continue
         }
 
         if (line.startsWith("V:")) {
@@ -150,8 +153,7 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
 
     if (inTargetBlock) return emptyList()
     throw IllegalArgumentException(
-        "Пакет '$targetPackage' версии '$targetVersion' " +
-                "не найден в индексе."
+        "Пакет '$targetPackage' версии '$targetVersion' не найден в индексе."
     )
 }
 
@@ -165,11 +167,13 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
  * @return Map, где ключ - имя пакета, значение - список его прямых зависимостей.
  */
 fun buildDependencyGraph(
-    rootPackage: String, maxDepth: Int, repositoryMode: String, indexFilePath: String
+    rootPackage: String,
+    maxDepth: Int,
+    repositoryMode: String,
+    indexFilePath: String
 ): Map<String, List<String>> {
 
     val graph = mutableMapOf<String, List<String>>()
-
     val visited = mutableSetOf<String>()
 
     fun bfsRecursive(currentPackage: String, currentDepth: Int) {
@@ -192,7 +196,6 @@ fun buildDependencyGraph(
     }
 
     bfsRecursive(rootPackage, 0)
-
     return graph
 }
 
@@ -202,22 +205,24 @@ fun buildDependencyGraph(
  */
 fun getLocalDependencies(filePath: String, targetPackage: String): List<String> {
     val file = File(filePath)
-    if (!file.exists()) throw IllegalArgumentException("Файл тестового репозитория не найден:" +
-            " $filePath")
+    if (!file.exists()) {
+        throw IllegalArgumentException("Файл тестового репозитория не найден: $filePath")
+    }
 
     val lines = file.readLines()
     for (line in lines) {
         val parts = line.split(":")
         if (parts.size >= MIN_PARTS_FOR_PACKAGE && parts[PACKAGE_INDEX].trim() == targetPackage) {
             val depsString = parts[1].trim()
-            return if (depsString.isEmpty())
+            return if (depsString.isEmpty()) {
                 emptyList()
-            else depsString.split(",").map { it.trim() }
+            } else {
+                depsString.split(",").map { it.trim() }
+            }
         }
     }
     return emptyList()
 }
-
 
 /**
  * Находит обратные зависимости для заданного пакета.
@@ -230,7 +235,9 @@ fun getLocalDependencies(filePath: String, targetPackage: String): List<String> 
  * @return Множество имен пакетов, которые зависят от targetPackage.
  */
 fun findReverseDependencies(
-    graph: Map<String, List<String>>, targetPackage: String, maxDepth: Int
+    graph: Map<String, List<String>>,
+    targetPackage: String,
+    maxDepth: Int
 ): Set<String> {
     val reverseResult = mutableSetOf<String>()
     val visited = mutableSetOf<String>()
@@ -250,12 +257,9 @@ fun findReverseDependencies(
     }
 
     bfsReverse(targetPackage, 0)
-
     reverseResult.remove(targetPackage)
-
     return reverseResult
 }
-
 
 /**
  * Генерирует текстовое представление графа на языке PlantUML.
@@ -278,7 +282,6 @@ fun generatePlantUml(graph: Map<String, List<String>>): String {
     return sb.toString()
 }
 
-
 /**
  * Сохраняет PlantUML в файл и пытается сгенерировать SVG с помощью plantuml.jar.
  */
@@ -293,7 +296,8 @@ fun saveAndRenderGraph(plantUmlText: String, outputFileName: String) {
         println("Генерация SVG...")
         try {
             val process = ProcessBuilder(
-                "java", "-jar", plantUmlJar.absolutePath, "-tsvg", pumlFile.absolutePath
+                "java", "-jar", plantUmlJar.absolutePath,
+                "-tsvg", pumlFile.absolutePath
             ).start()
             process.waitFor()
             println("SVG сохранен в: ${File("$baseName.svg").absolutePath}")
@@ -301,10 +305,8 @@ fun saveAndRenderGraph(plantUmlText: String, outputFileName: String) {
             println("Ошибка при вызове plantuml.jar: ${e.message}")
         }
     } else {
-        println("Внимание: plantuml.jar не найден в корне проекта. Пропускаем генерацию SVG.")
-        println("Вы можете сгенерировать картинку вручную на сайте plantuml.com, " +
-                "вставив туда текст " +
-                "из ${pumlFile.name}")
+        println("Внимание: plantuml.jar не найден в корне проекта.")
+        println("Вы можете сгенерировать картинку вручную на сайте plantuml.com")
     }
 }
 
@@ -340,8 +342,11 @@ private fun handleLocalMode(config: Config, configPath: String) {
  */
 private fun printGraph(graph: Map<String, List<String>>) {
     for ((pkg, deps) in graph) {
-        val depString = if (deps.isEmpty()) "[нет зависимостей]" else
+        val depString = if (deps.isEmpty()) {
+            "[нет зависимостей]"
+        } else {
             deps.joinToString(", ")
+        }
         println("$pkg -> $depString")
     }
 }
