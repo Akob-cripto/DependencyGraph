@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
             val depth = config.maxDepth.toIntOrNull() ?: 5
 
             val graph = buildDependencyGraph(
-                rootPackage = config.packageName, // Например "A"
+                rootPackage = config.packageName,
                 maxDepth = depth,
                 repositoryMode = config.repositoryMode,
                 indexFilePath = testRepoPath
@@ -175,7 +175,7 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
         when {
             line.startsWith("P:") -> {
                 currentPackage = line.substring(2).trim()
-                // Если имя совпало, начинаем отслеживать блок
+
                 inTargetBlock = (currentPackage == targetPackage)
             }
 
@@ -190,7 +190,7 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
                 if (inTargetBlock) {
                     val depsString = line.substring(2).trim()
                     return if (depsString.isEmpty()) {
-                        emptyList() // Пакет есть, но зависимостей нет
+                        emptyList()
                     } else {
                         depsString.split(" ").filter { it.isNotBlank() }
                     }
@@ -227,8 +227,8 @@ fun buildDependencyGraph(
     val visited = mutableSetOf<String>()
 
     fun bfsRecursive(currentPackage: String, currentDepth: Int) {
-        if (currentDepth > maxDepth) return // Достигли максимальной глубины
-        if (visited.contains(currentPackage)) return // Пакет уже посещали (цикл)
+        if (currentDepth > maxDepth) return
+        if (visited.contains(currentPackage)) return
 
         visited.add(currentPackage)
 
