@@ -107,7 +107,8 @@ fun loadConfig(filePath: String): Config {
  * @return Список строк с зависимостями. Если зависимостей нет, возвращает пустой список.
  * @throws IllegalArgumentException Если пакет или версия не найдены в файле.
  */
-fun findDependencies(filePath: String, targetPackage: String, targetVersion: String): List<String> {
+fun findDependencies(filePath: String, targetPackage: String, targetVersion: String):
+        List<String> {
     val file = File(filePath)
     if (!file.exists()) {
         throw IllegalArgumentException("Файл индекса не найден: $filePath")
@@ -122,21 +123,36 @@ fun findDependencies(filePath: String, targetPackage: String, targetVersion: Str
             inTargetBlock = false
             continue
         }
+
         if (line.startsWith("P:")) {
             currentPackage = line.substring(2).trim()
             inTargetBlock = (currentPackage == targetPackage)
-        } else if (line.startsWith("V:")) {
+            continue // Ранний переход на следующую итерацию
+        }
+
+        if (line.startsWith("V:")) {
             currentVersion = line.substring(2).trim()
             if (inTargetBlock && currentVersion != targetVersion) {
                 inTargetBlock = false
             }
-        } else if (line.startsWith("D:") && inTargetBlock) {
+            continue
+        }
+
+        if (line.startsWith("D:") && inTargetBlock) {
             val depsString = line.substring(2).trim()
-            return if (depsString.isEmpty()) emptyList() else depsString.split(" ").filter { it.isNotBlank() }
+            return if (depsString.isEmpty()) {
+                emptyList()
+            } else {
+                depsString.split(" ").filter { it.isNotBlank() }
+            }
         }
     }
+
     if (inTargetBlock) return emptyList()
-    throw IllegalArgumentException("Пакет '$targetPackage' версии '$targetVersion' не найден в индексе.")
+    throw IllegalArgumentException(
+        "Пакет '$targetPackage' версии '$targetVersion' " +
+                "не найден в индексе."
+    )
 }
 
 /**
@@ -186,14 +202,17 @@ fun buildDependencyGraph(
  */
 fun getLocalDependencies(filePath: String, targetPackage: String): List<String> {
     val file = File(filePath)
-    if (!file.exists()) throw IllegalArgumentException("Файл тестового репозитория не найден: $filePath")
+    if (!file.exists()) throw IllegalArgumentException("Файл тестового репозитория не найден:" +
+            " $filePath")
 
     val lines = file.readLines()
     for (line in lines) {
         val parts = line.split(":")
         if (parts.size >= MIN_PARTS_FOR_PACKAGE && parts[PACKAGE_INDEX].trim() == targetPackage) {
             val depsString = parts[1].trim()
-            return if (depsString.isEmpty()) emptyList() else depsString.split(",").map { it.trim() }
+            return if (depsString.isEmpty())
+                emptyList()
+            else depsString.split(",").map { it.trim() }
         }
     }
     return emptyList()
@@ -283,7 +302,9 @@ fun saveAndRenderGraph(plantUmlText: String, outputFileName: String) {
         }
     } else {
         println("Внимание: plantuml.jar не найден в корне проекта. Пропускаем генерацию SVG.")
-        println("Вы можете сгенерировать картинку вручную на сайте plantuml.com, вставив туда текст из ${pumlFile.name}")
+        println("Вы можете сгенерировать картинку вручную на сайте plantuml.com, " +
+                "вставив туда текст " +
+                "из ${pumlFile.name}")
     }
 }
 
@@ -314,11 +335,13 @@ private fun handleLocalMode(config: Config, configPath: String) {
  * Выводит в консоль текстовое представление графа зависимостей.
  * Для каждого пакета отображает его прямые зависимости.
  *
- * @param graph Map, представляющая граф зависимостей, где ключ — имя пакета, а значение — список его зависимостей.
+ * @param graph Map, представляющая граф зависимостей, где ключ — имя пакета,
+ * а значение — список его зависимостей.
  */
 private fun printGraph(graph: Map<String, List<String>>) {
     for ((pkg, deps) in graph) {
-        val depString = if (deps.isEmpty()) "[нет зависимостей]" else deps.joinToString(", ")
+        val depString = if (deps.isEmpty()) "[нет зависимостей]" else
+            deps.joinToString(", ")
         println("$pkg -> $depString")
     }
 }

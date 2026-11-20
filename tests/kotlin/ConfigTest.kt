@@ -18,7 +18,6 @@ class ConfigTest {
     fun `should load valid config correctly`() {
         val tempFile = File.createTempFile("test_config", ".xml")
 
-        // Длинный URL разбит на части с помощью конкатенации, чтобы не превышать 100 символов
         val longUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64" +
                 "/some/very/long/path/to/avoid/long/lines"
 
